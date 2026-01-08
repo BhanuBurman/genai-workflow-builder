@@ -1,52 +1,70 @@
 import uvicorn
+import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+# Adjust these imports based on the folder structure I gave you
 from app import models
-from app.database import engine
-from app.routers import api_router
+from app.db.session import engine
+# Assuming you put your router in app/api/v1/router.py
+from app.api.v1.router import api_router 
 from config import settings
 
-import os
-
-# Create DB tables at startup (safe to call multiple times)
-models.Base.metadata.create_all(bind=engine)
+# ✅ LIFESPAN: The correct way to handle async startup tasks
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("🚀 Starting up Workflow Builder...")
+    
+    # Create DB tables (Async compatible)
+    async with engine.begin() as conn:
+        # run_sync allows us to use the synchronous create_all method 
+        # inside the async context
+        await conn.run_sync(models.Base.metadata.create_all)
+    
+    yield
+    
+    print("🛑 Shutting down...")
+    # Add cleanup logic here if needed (e.g., closing connections)
 
 app = FastAPI(
-    title="Career Page Builder API",
-    description="API for Career Page Builder application",
+    title=settings.PROJECT_NAME,
+    description="Low-Code/No-Code Workflow Engine with RAG & LLM integration",
     version="1.0.0",
-    debug=settings.debug,
+    lifespan=lifespan, # Register the lifespan handler
+    # debug=settings.debug # Note: 'debug' param is deprecated in newer FastAPI versions
 )
 
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=settings.CORS_ORIGINS, # Update this to specific domains in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Include routers
-app.include_router(api_router, prefix="/api")
-
+app.include_router(api_router, prefix="/api/v1")
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to Career Page Builder API"}
-
+    return {
+        "message": f"Welcome to {settings.PROJECT_NAME}",
+        "docs": "/docs",
+        "health": "/health"
+    }
 
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
 
-
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", settings.api_port))
+    # Ensure settings.API_PORT / API_HOST exist in your config.py
+    # or default to standard values
     uvicorn.run(
-        "main:app",
-        host=settings.api_host,
-        port=settings.api_port,
-        reload=settings.debug,
+        "main:app", # Note: 'app.main:app' assumes running from root
+        host=settings.API_HOST,
+        port=settings.API_PORT,
+        reload=True
     )
