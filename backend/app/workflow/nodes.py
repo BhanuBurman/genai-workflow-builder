@@ -1,9 +1,8 @@
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
-from config import settings
 from app.workflow.state import GraphState
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_openai import ChatOpenAI
+from config import settings
 
-# Initialize LLM (Ensure OPENAI_API_KEY is in your .env)
 llm = ChatOpenAI(
     model=settings.LLM_MODEL_NAME,
     tiktoken_model_name=settings.TIKTOKEN_MODEL_NAME,
@@ -12,46 +11,58 @@ llm = ChatOpenAI(
     temperature=settings.TEMPERATURE,
 )
 
-# --- Component 1: User Query Node ---
-# Logic: Validates input and prepares the state.
+NO_RESULTS_FLAG = "__NO_SEARCH_RESULTS__"
+
 def node_user_query(state: GraphState) -> GraphState:
-    print("--- EXECUTE: USER QUERY NODE ---")
-    query = state.get("input_query")
-    
-    if not query:
-        raise ValueError("No input query provided!")
-        
-    # In the future, you could add query expansion or re-writing here
-    return {"input_query": query}
+    print("--- EXECUTE: USER QUERY ---")
+    return {
+        "current_content": state["input_query"]
+    }
 
+def node_knowledge_base(state: GraphState) -> GraphState:
+    print("--- EXECUTE: KNOWLEDGE BASE ---")
+    query = state.get("current_content", "")
 
-# --- Component 2: LLM Engine Node ---
-# Logic: Takes the query (and context later) and generates an answer.
+    if "pricing" in query.lower():
+        return {"context": "Pricing is $10/mo."}
+
+    return {"context": NO_RESULTS_FLAG}
+
 def node_llm_engine(state: GraphState) -> GraphState:
-    print("--- EXECUTE: LLM ENGINE NODE ---")
-    query = state["input_query"]
-    
-    # 1. Define the prompt
-    # In the future, inject 'context' here for RAG
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are a helpful AI assistant."),
-        ("user", "{input}")
-    ])
-    
-    # 2. Chain logic
-    chain = prompt | llm
-    
-    # 3. Invoke
-    response = chain.invoke({"input": query})
-    
-    return {"llm_response": response.content}
+    print("--- EXECUTE: LLM ENGINE ---")
 
+    query = state.get("current_content", "")
+    context = state.get("context")
+    existing = state.get("llm_response")
 
-# --- Component 3: Output Node ---
-# Logic: Formats the final response for the user interface.
+    # RAG success
+    if context and context != NO_RESULTS_FLAG:
+        prompt = ChatPromptTemplate.from_template(
+            "Answer ONLY using this context:\n{context}\n\nQuestion: {input}"
+        )
+        return {
+            "llm_response": (prompt | llm).invoke(
+                {"context": context, "input": query}
+            ).content
+        }
+
+    # RAG failed
+    if context == NO_RESULTS_FLAG:
+        if existing:
+            return {}
+        return {
+            "llm_response": "I checked the Knowledge Base but couldn’t find relevant information."
+        }
+
+    # General chat
+    prompt = ChatPromptTemplate.from_template(
+        "You are a helpful assistant. Question: {input}"
+    )
+    return {
+        "llm_response": (prompt | llm).invoke({"input": query}).content
+    }
+
 def node_output(state: GraphState) -> GraphState:
-    print("--- EXECUTE: OUTPUT NODE ---")
-    raw_response = state.get("llm_response")
-    
-    # You might want to format markdown, remove sensitive info, or log chat history here
-    return {"final_output": raw_response}
+    return {
+        "final_output": state.get("llm_response")
+    }

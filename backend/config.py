@@ -14,6 +14,8 @@ class Settings:
         self.API_PORT: int = int(os.getenv("API_PORT", "8000"))
         self.PROJECT_NAME: str = "Workflow Builder AI"
         self.DATABASE_URL: str = os.getenv("DATABASE_URL", "")
+
+        
         self.LLM_MODEL_NAME: str = os.getenv("LLM_MODEL_NAME", "gpt-4o")
         self.TIKTOKEN_MODEL_NAME: str = os.getenv("TIKTOKEN_MODEL_NAME", "gpt-4o")
         self.OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")

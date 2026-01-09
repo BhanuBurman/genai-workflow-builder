@@ -1,42 +1,90 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
+from typing import List, Dict, Any
 
 from app.db.session import get_db
 from app.schemas.workflow import WorkflowCreate, WorkflowResponse
 from app.services import workflow_service
 
-from app.workflow.builder import build_workflow
+from app.workflow.builder import build_graph_from_frontend
+from app.workflow.validator import validate_graph, GraphValidationError
 
 router = APIRouter()
 
 
-class RunRequest(BaseModel):
+
+# --- Schemas ---
+class RunGraphRequest(BaseModel):
+    message: str                    # The user's question
+    nodes: List[Dict[str, Any]]     # React Flow Nodes
+    edges: List[Dict[str, Any]]     # React Flow Edges
+
+class WorkflowBuildRequest(BaseModel):
+    nodes: List[Dict[str, Any]]
+    edges: List[Dict[str, Any]]
+
+class WorkflowBuildResponse(BaseModel):
+    workflow_id: str
+    status: str
     message: str
 
-@router.post("/run")
-async def run_workflow_endpoint(request: RunRequest):
-    # 1. Initialize the Graph
-    workflow_app = build_workflow()
-    
-    # 2. Define Initial State
-    initial_state = {
-        "input_query": request.message,
-        "messages": [],
-        "context": None,
-        "llm_response": None,
-        "final_output": None
-    }
-    
-    # 3. Invoke the Graph
-    # Use ainvoke for async execution
+# --- The NEW Build Endpoint ---
+@router.post("/build", response_model=WorkflowBuildResponse)
+async def build_workflow(payload: WorkflowBuildRequest):
+    """
+    Validates the graph structure.
+    Does NOT save to DB yet (pure validation).
+    Returns a generated workflow_id if successful.
+    """
     try:
-        result = await workflow_app.ainvoke(initial_state)
-        return {"response": result["final_output"]}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # 1. Run Validation Logic
+        generated_id = validate_graph(payload.nodes, payload.edges)
+        
+        # 2. Return Success
+        return {
+            "workflow_id": generated_id,
+            "status": "valid",
+            "message": "Workflow is valid and ready to run."
+        }
 
+    except GraphValidationError as e:
+        # 3. Return Logic Error (400 Bad Request)
+        raise HTTPException(status_code=400, detail=str(e))
+        
+    except Exception as e:
+        # 4. Return Server Error
+        raise HTTPException(status_code=500, detail=f"Server Error: {str(e)}")
+
+@router.post("/run")
+async def run_workflow(payload: RunGraphRequest):
+    try:
+        # 1. Convert Payload to Dict
+        graph_data = {"nodes": payload.nodes, "edges": payload.edges}
+        
+        # 2. Build the Graph
+        app_graph = build_graph_from_frontend(graph_data)
+        
+        # 3. Prepare Input State (The New Contract)
+        initial_state = {
+            "input_query": payload.message, # The raw history
+            "current_content": "",          # Will be set by node_user_query
+            "messages": [],
+            "context": None,                # Will be set by KB node (if present)
+            "final_output": None
+        }
+        
+        # 4. Run Execution
+        result = await app_graph.ainvoke(initial_state)
+        
+        # 5. Return Result
+        return {"response": result.get("final_output")}
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+    
 @router.post("/", response_model=WorkflowResponse)
 async def create_workflow(
     workflow: WorkflowCreate, 
