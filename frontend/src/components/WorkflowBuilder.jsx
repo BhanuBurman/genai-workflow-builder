@@ -3,7 +3,6 @@ import React, {
   useCallback,
   useRef,
   useEffect,
-  useMemo,
 } from "react";
 import { useParams } from "react-router-dom";
 import ReactFlow, {
@@ -26,8 +25,8 @@ import GenericNode from "../components/flow/GenericNode";
 import { workflowService } from "../services/workflowService";
 import { workflowGraphService } from "../services/workflowGraphService";
 
-/* ------------------ STATIC NODE TYPES ------------------ */
-const NODE_TYPES = {
+/* ------------------ STATIC NODE TYPES (STABLE REFERENCE) ------------------ */
+const nodeTypes = {
   userQuery: GenericNode,
   knowledgeBase: GenericNode,
   llm: GenericNode,
@@ -37,14 +36,11 @@ const NODE_TYPES = {
 export default function WorkflowBuilder() {
   const { id } = useParams();
   const reactFlowWrapper = useRef(null);
-  const { project } = useReactFlow();
+  const { screenToFlowPosition } = useReactFlow();
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [loading, setLoading] = useState(id !== "new");
-
-  /* --------- MEMOIZED NODE TYPES (FIX #002) --------- */
-  const nodeTypes = useMemo(() => NODE_TYPES, []);
 
   /* ---------------- NODE DATA UPDATE ---------------- */
   const onNodeDataChange = useCallback(
@@ -84,6 +80,7 @@ export default function WorkflowBuilder() {
             description: n.component.description,
             type: n.component.type,
             ui_schema: n.component.ui_schema,
+            handles: n.handles,  // NEW: Pass handles from API
             values: n.config,
             onChange: onNodeDataChange,
           },
@@ -133,15 +130,15 @@ export default function WorkflowBuilder() {
   const onDrop = useCallback(
     (event) => {
       event.preventDefault();
-      const bounds = reactFlowWrapper.current.getBoundingClientRect();
       const raw = event.dataTransfer.getData("application/reactflow");
       if (!raw) return;
 
       const component = JSON.parse(raw);
-      const position = project({
-        x: event.clientX - bounds.left,
-        y: event.clientY - bounds.top,
+      const position = screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
       });
+      console.log("Dropped component:", component);
 
       const newNode = {
         id: `${component.type}_${Date.now()}`,
@@ -152,6 +149,7 @@ export default function WorkflowBuilder() {
           description: component.description,
           type: component.type,
           ui_schema: component.ui_schema,
+          handles: component.handles || [],  // Use from API, not hardcoded
           values: {},
           onChange: onNodeDataChange,
         },
@@ -159,7 +157,7 @@ export default function WorkflowBuilder() {
 
       setNodes((nds) => nds.concat(newNode));
     },
-    [project, setNodes, onNodeDataChange]
+    [screenToFlowPosition, setNodes, onNodeDataChange]
   );
 
   if (loading) {
@@ -189,7 +187,7 @@ export default function WorkflowBuilder() {
             onDragOver={(e) => e.preventDefault()}
             fitView
           >
-            <Background />
+            <Background className="bg-gray-100" />
             <Controls />
             <MiniMap />
           </ReactFlow>

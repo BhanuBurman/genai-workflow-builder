@@ -18,6 +18,9 @@ class Component(Base):
 
     ui_schema = Column(JSON, nullable=True)
 
+    # Store handle configuration per component type
+    handles = Column(JSON, nullable=False, default=list)
+
     is_active = Column(Boolean, default=True)
 
     created_at = Column(DateTime, server_default=func.now())

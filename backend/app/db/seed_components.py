@@ -21,7 +21,8 @@ async def seed_components(db: AsyncSession):
                 type=comp["type"],
                 description=comp["description"],
                 ui_schema=comp["ui_schema"],
-                is_active=True
+                handles=comp.get("handles", []),
+                is_active=True,
             )
         )
 

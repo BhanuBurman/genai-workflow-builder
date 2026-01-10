@@ -3,9 +3,8 @@ COMPONENT_DEFINITIONS = [
         "type": "userQuery",
         "name": "User Query",
         "description": "Starting point of the workflow. Accepts user input.",
-        "ui_schema": {
-            "fields": []
-        }
+        "ui_schema": {"fields": []},
+        "handles": [{"id": "query", "type": "source", "position": "bottom"}],
     },
     {
         "type": "llm",
@@ -18,7 +17,7 @@ COMPONENT_DEFINITIONS = [
                     "label": "Model",
                     "type": "select",
                     "options": ["gpt-4", "gpt-3.5-turbo"],
-                    "default": "gpt-4"
+                    "default": "gpt-4",
                 },
                 {
                     "name": "temperature",
@@ -27,16 +26,21 @@ COMPONENT_DEFINITIONS = [
                     "min": 0,
                     "max": 1,
                     "step": 0.1,
-                    "default": 0.7
+                    "default": 0.7,
                 },
                 {
                     "name": "system_prompt",
                     "label": "System Prompt",
                     "type": "textarea",
-                    "default": ""
-                }
+                    "default": "",
+                },
             ]
-        }
+        },
+        "handles": [
+            {"id": "query", "type": "target", "position": "top"},
+            {"id": "context", "type": "target", "position": "top"},
+            {"id": "output", "type": "source", "position": "bottom"},
+        ],
     },
     {
         "type": "knowledgeBase",
@@ -48,23 +52,23 @@ COMPONENT_DEFINITIONS = [
                     "name": "top_k",
                     "label": "Top K Results",
                     "type": "number",
-                    "default": 5
+                    "default": 5,
                 },
                 {
                     "name": "score_threshold",
                     "label": "Score Threshold",
                     "type": "number",
-                    "default": 0.75
-                }
+                    "default": 0.75,
+                },
             ]
-        }
+        },
+        "handles": [{"id": "context", "type": "source", "position": "bottom"}],
     },
     {
         "type": "output",
         "name": "Output",
         "description": "Final output of the workflow",
-        "ui_schema": {
-            "fields": []
-        }
-    }
+        "ui_schema": {"fields": []},
+        "handles": [{"id": "output", "type": "target", "position": "top"}],
+    },
 ]

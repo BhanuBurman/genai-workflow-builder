@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { workflowService } from "../services/workflowService";
 import { Plus, ExternalLink } from "lucide-react";
+import CreateNewWorkflowPopup from "../components/CreateNewWorkflowPopup";
 
 /* ---------------------------------------------------- */
 /* Home Page – My Stacks (GenAI Stack style)              */
@@ -13,6 +14,8 @@ const HomePage = () => {
   const [workflows, setWorkflows] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+
+  const [isCreateWorkflowOpen, setIsCreateWorkflowOpen] = useState(false);
 
   /* ---------------- Fetch Workflows ---------------- */
 
@@ -32,28 +35,15 @@ const HomePage = () => {
     }
   };
 
-  /* ---------------- Create Workflow ---------------- */
-
-  const handleCreateWorkflow = async () => {
-    try {
-      setCreating(true);
-      const workflow = await workflowService.createWorkflow({
-        name: "Untitled Stack",
-        description: "New AI workflow",
-      });
-
-      navigate(`/workflow/${workflow.id}`);
-    } catch (err) {
-      console.error("Failed to create workflow", err);
-    } finally {
-      setCreating(false);
-    }
-  };
+ 
 
   /* ---------------- Render ---------------- */
 
   return (
     <div className="min-h-screen bg-white">
+      {isCreateWorkflowOpen && (
+        <CreateNewWorkflowPopup />
+      )}
       {/* ---------------- Top Bar ---------------- */}
       <header className="h-14 border-b flex items-center justify-between px-6 border-gray-300">
         <div className="flex items-center gap-2 font-semibold text-gray-900">
@@ -62,7 +52,7 @@ const HomePage = () => {
 
         <div className="flex items-center gap-4">
           <button
-            onClick={handleCreateWorkflow}
+            onClick={() => setIsCreateWorkflowOpen(true)}
             disabled={creating}
             className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 disabled:opacity-50"
           >

@@ -13,9 +13,7 @@ from app.models.component import Component
 # =========================
 async def get_workflow_graph(db: AsyncSession, workflow_id: int):
     # 1. Fetch Workflow
-    result = await db.execute(
-        select(Workflow).where(Workflow.id == workflow_id)
-    )
+    result = await db.execute(select(Workflow).where(Workflow.id == workflow_id))
     workflow = result.scalar_one_or_none()
     if not workflow:
         return None
@@ -26,15 +24,11 @@ async def get_workflow_graph(db: AsyncSession, workflow_id: int):
 
     # 2. Fetch Node Configs
     result = await db.execute(
-        select(WorkflowNodeConfig).where(
-            WorkflowNodeConfig.workflow_id == workflow_id
-        )
+        select(WorkflowNodeConfig).where(WorkflowNodeConfig.workflow_id == workflow_id)
     )
     node_configs = result.scalars().all()
 
-    node_config_map = {
-        cfg.node_id: cfg for cfg in node_configs
-    }
+    node_config_map = {cfg.node_id: cfg for cfg in node_configs}
 
     # 3. Fetch Components
     component_types = {cfg.component_type for cfg in node_configs}
@@ -46,9 +40,7 @@ async def get_workflow_graph(db: AsyncSession, workflow_id: int):
         )
         components = result.scalars().all()
 
-    component_map = {
-        c.type: c for c in components
-    }
+    component_map = {c.type: c for c in components}
 
     # 4. Merge node + config + component metadata
     enriched_nodes = []
@@ -57,16 +49,34 @@ async def get_workflow_graph(db: AsyncSession, workflow_id: int):
         cfg = node_config_map.get(node_id)
         component = component_map.get(cfg.component_type) if cfg else None
 
-        enriched_nodes.append({
-            **node,
-            "component": {
-                "type": component.type,
-                "name": component.name,
-                "description": component.description,
-                "ui_schema": component.ui_schema
-            } if component else None,
-            "config": cfg.config_values if cfg else {}
-        })
+        enriched_nodes.append(
+            {
+                **node,
+                "handles": cfg.handles if cfg else [],  # NEW: Restore handles
+                "component": (
+                    {
+                        "type": component.type,
+                        "name": component.name,
+                        "description": component.description,
+                        "ui_schema": component.ui_schema,
+                    }
+                    if component
+                    else None
+                ),
+                "config": cfg.config_values if cfg else {},
+            }
+        )
+
+    # NEW: Edges include handle references
+    enriched_edges = [
+        {
+            "source": e["source"],
+            "target": e["target"],
+            "sourceHandle": e.get("sourceHandle"),
+            "targetHandle": e.get("targetHandle"),
+        }
+        for e in edges
+    ]
 
     return {
         "workflow": {
@@ -74,10 +84,7 @@ async def get_workflow_graph(db: AsyncSession, workflow_id: int):
             "name": workflow.name,
             "description": workflow.description,
         },
-        "graph": {
-            "nodes": enriched_nodes,
-            "edges": edges
-        }
+        "graph": {"nodes": enriched_nodes, "edges": enriched_edges},  # NEW: Updated
     }
 
 
@@ -87,9 +94,7 @@ async def get_workflow_graph(db: AsyncSession, workflow_id: int):
 async def save_workflow_graph(db: AsyncSession, workflow_id: int, payload):
     async with db.begin():  # 🔒 atomic transaction
         # 1️⃣ Check if workflow exists
-        result = await db.execute(
-            select(Workflow).where(Workflow.id == workflow_id)
-        )
+        result = await db.execute(select(Workflow).where(Workflow.id == workflow_id))
         workflow = result.scalar_one_or_none()
         if not workflow:
             raise ValueError(f"Workflow with id {workflow_id} not found")
@@ -113,24 +118,24 @@ async def save_workflow_graph(db: AsyncSession, workflow_id: int, payload):
             {
                 "id": node.id,
                 "type": node.type,
-                "position": node.position
+                "position": node.position,
+                "handles": node.handles,  # NEW: Include handles
             }
             for node in payload.graph.nodes
         ]
 
-        # ✅ Edges → dicts (THIS WAS THE BUG)
+        # ✅ Edges → dicts (NEW: Include handle references)
         flow_edges = [
             {
                 "source": edge.source,
-                "target": edge.target
+                "target": edge.target,
+                "sourceHandle": edge.sourceHandle,  # NEW
+                "targetHandle": edge.targetHandle,  # NEW
             }
             for edge in payload.graph.edges
         ]
 
-        flow_json = {
-            "nodes": flow_nodes,
-            "edges": flow_edges
-        }
+        flow_json = {"nodes": flow_nodes, "edges": flow_edges}
 
         # 4️⃣ Update workflow
         workflow.flow_json = flow_json
@@ -143,7 +148,7 @@ async def save_workflow_graph(db: AsyncSession, workflow_id: int, payload):
             )
         )
 
-        # 6️⃣ Save new node configs
+        # 6️⃣ Save new node configs WITH handles
         for node in payload.graph.nodes:
             config = node.data.get("config", {})
 
@@ -151,7 +156,8 @@ async def save_workflow_graph(db: AsyncSession, workflow_id: int, payload):
                 workflow_id=workflow_id,
                 node_id=node.id,
                 component_type=node.type,
-                config_values=config
+                config_values=config,
+                handles=node.handles,  # NEW: Store handles
             )
             db.add(node_config)
 

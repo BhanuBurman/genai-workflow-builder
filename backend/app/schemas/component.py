@@ -3,11 +3,18 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 
+class HandleSchema(BaseModel):
+    id: str
+    type: str  # "source" | "target"
+    position: str  # "top" | "bottom" | "left" | "right"
+
+
 class ComponentBase(BaseModel):
     name: str
     type: str
     description: str
     ui_schema: Dict[str, Any]
+    handles: List[HandleSchema] = []
     is_active: bool = True
 
 

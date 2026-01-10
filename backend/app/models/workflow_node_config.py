@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, JSON, ForeignKey
 from app.db.session import Base
 
+
 class WorkflowNodeConfig(Base):
     __tablename__ = "workflow_node_configs"
 
@@ -20,3 +21,6 @@ class WorkflowNodeConfig(Base):
 
     # User-filled values ONLY
     config_values = Column(JSON, nullable=False)
+
+    # Handle configuration (ports)
+    handles = Column(JSON, nullable=False, default=list)

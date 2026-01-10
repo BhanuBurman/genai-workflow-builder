@@ -29,6 +29,7 @@ export default function Sidebar() {
 
   const onDragStart = (event, component) => {
     // Pass the entire component definition to the drop zone
+    console.log("Dragging component - START:", component);
     event.dataTransfer.setData('application/reactflow', JSON.stringify(component));
     event.dataTransfer.effectAllowed = 'move';
   };

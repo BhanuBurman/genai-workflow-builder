@@ -9,13 +9,6 @@ from app.services import component_service
 
 router = APIRouter()
 
-class ComponentShortResponse(BaseModel):
-    id: int
-    name: str
-    description: str
-    ui_schema: Dict[str, Any]
-    is_active: bool
-
 @router.post("/", response_model=ComponentResponse)
 async def create_component(
     payload: ComponentCreate,
@@ -24,16 +17,10 @@ async def create_component(
     return await component_service.create_component(db, payload)
 
 
-@router.get("/", response_model=List[ComponentShortResponse])
+@router.get("/", response_model=List[ComponentResponse])
 async def list_components(db: AsyncSession = Depends(get_db)):
     components = await component_service.get_all_components(db)
-    return [ComponentShortResponse(
-        id=component.id,
-        name=component.name,
-        description=component.description,
-        ui_schema=component.ui_schema,
-        is_active=component.is_active
-    ) for component in components]
+    return components
 
 
 @router.get("/{component_type}", response_model=ComponentResponse)

@@ -1,11 +1,11 @@
 import React from 'react';
 import { Eye, EyeOff, Upload } from 'lucide-react';
 
-export const NodeFieldRenderer = ({ field, value, onChange }) => {
+const NodeFieldRenderer = ({ field, value, onChange }) => {
   const [showPassword, setShowPassword] = React.useState(false);
 
-  const baseInputClass = "w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400";
-  const labelClass = "text-xs text-gray-600 block mb-1";
+  const baseInputClass = "w-64 border border-gray-300 rounded m-2 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400";
+  const labelClass = "w-64 text-xs text-gray-600 block mx-2";
 
   switch (field.type) {
     case 'textarea':
@@ -101,3 +101,5 @@ export const NodeFieldRenderer = ({ field, value, onChange }) => {
       );
   }
 };
+
+export default NodeFieldRenderer;
