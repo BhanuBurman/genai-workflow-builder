@@ -1,14 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 from app.db.session import get_db
-from app.schemas.workflow import WorkflowCreate, WorkflowResponse
-from app.services import workflow_service
+from app.schemas.workflow import WorkflowResponse, WorkflowCreate
+from app.schemas.workflow_graph import (
+    WorkflowGraphSaveRequest,
+    WorkflowGraphSaveResponse
+)
+from app.services.workflow_service import create_empty_workflow, get_workflow, get_all_workflows
+from app.services.workflow_graph_service import save_workflow_graph
 
 from app.workflow.builder import build_graph_from_frontend
-from app.workflow.validator import validate_graph, GraphValidationError
+from app.workflow.validator import GraphValidationError
+from app.workflow.validator import validate_graph
 
 router = APIRouter()
 
@@ -39,11 +45,10 @@ async def build_workflow(payload: WorkflowBuildRequest):
     """
     try:
         # 1. Run Validation Logic
-        generated_id = validate_graph(payload.nodes, payload.edges)
+        validate_graph(payload.nodes, payload.edges)
         
         # 2. Return Success
         return {
-            "workflow_id": generated_id,
             "status": "valid",
             "message": "Workflow is valid and ready to run."
         }
@@ -85,19 +90,28 @@ async def run_workflow(payload: RunGraphRequest):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
     
-@router.post("/", response_model=WorkflowResponse)
+@router.post("/")
 async def create_workflow(
-    workflow: WorkflowCreate, 
-    db: AsyncSession = Depends(get_db)
+    payload: WorkflowCreate,
+    db: AsyncSession = Depends(get_db),
 ):
-    return await workflow_service.create_workflow(db, workflow)
+    workflow_id = await create_empty_workflow(
+        db,
+        payload.name,
+        payload.description
+    )
+    return {
+        "workflow_id": workflow_id,
+        "status": "created"
+    }
+
 
 @router.get("/{workflow_id}", response_model=WorkflowResponse)
 async def read_workflow(
     workflow_id: int, 
     db: AsyncSession = Depends(get_db)
 ):
-    db_workflow = await workflow_service.get_workflow(db, workflow_id)
+    db_workflow = await get_workflow(db, workflow_id)
     if db_workflow is None:
         raise HTTPException(status_code=404, detail="Workflow not found")
     return db_workflow
@@ -108,4 +122,4 @@ async def read_workflows(
     limit: int = 100, 
     db: AsyncSession = Depends(get_db)
 ):
-    return await workflow_service.get_all_workflows(db, skip, limit)
+    return await get_all_workflows(db, skip, limit)

@@ -6,4 +6,5 @@ from app.db.session import Base
 # 2. Import all your models here
 # This registers them with Base.metadata so create_all() finds them!
 from app.models.workflow import Workflow
+from app.models.component import Component
 # from app.models.document import Document

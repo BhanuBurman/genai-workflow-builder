@@ -6,7 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Adjust these imports based on the folder structure I gave you
 from app import models
-from app.db.session import engine
+from app.db.session import engine, SessionLocal
+
+from app.db.seed_components import seed_components
 # Assuming you put your router in app/api/v1/router.py
 from app.api.v1.router import api_router 
 from config import settings
@@ -21,6 +23,9 @@ async def lifespan(app: FastAPI):
         # run_sync allows us to use the synchronous create_all method 
         # inside the async context
         await conn.run_sync(models.Base.metadata.create_all)
+
+    async with SessionLocal() as session:
+        await seed_components(session)
     
     yield
     
