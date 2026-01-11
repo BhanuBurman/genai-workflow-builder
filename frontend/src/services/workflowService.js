@@ -98,5 +98,33 @@ export const workflowService = {
       console.error('Error fetching workflow edges:', error);
       throw error;
     }
+  },
+
+  // Build workflow (validate the graph structure)
+  async buildWorkflow(nodes, edges) {
+    try {
+      const response = await apiClient.post('/api/v1/workflows/build', {
+        nodes,
+        edges
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error building workflow:', error);
+      throw error;
+    }
+  },
+
+  // Run workflow with workflow_id and message
+  async runWorkflow(workflowId, message) {
+    try {
+      const response = await apiClient.post('/api/v1/workflows/run', {
+        workflow_id: workflowId,
+        message
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error running workflow:', error);
+      throw error;
+    }
   }
 };

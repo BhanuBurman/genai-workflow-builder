@@ -3,7 +3,6 @@ import { useParams } from "react-router-dom";
 import ReactFlow, {
   Background,
   Controls,
-  MiniMap,
   addEdge,
   useEdgesState,
   useNodesState,
@@ -11,12 +10,13 @@ import ReactFlow, {
   useReactFlow,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import { Loader2 } from "lucide-react";
+import { ChartArea, Loader2, MessageCircleMore, Play } from "lucide-react";
 import toast from "react-hot-toast";
 
 import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
 import GenericNode from "../components/flow/GenericNode";
+import ChatPopup from "../components/ChatPopup";
 import { workflowService } from "../services/workflowService";
 import { workflowGraphService } from "../services/workflowGraphService";
 
@@ -36,6 +36,42 @@ export default function WorkflowBuilder() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [loading, setLoading] = useState(id !== "new");
+
+  const [isChatOpen, setIsChatOpen] = useState(false);
+
+  /* ---------------- BUILD WORKFLOW (VALIDATE) ---------------- */
+  const handleBuild = async () => {
+    try {
+      if (nodes.length === 0 || edges.length === 0) {
+        toast.error("Please add nodes and edges to build the workflow");
+        return;
+      }
+
+      const payload = {
+        nodes: nodes.map((n) => ({
+          id: n.id,
+          type: n.type,
+          position: n.position,
+        })),
+        edges: edges.map((e) => ({
+          source: e.source,
+          target: e.target,
+          sourceHandle: e.sourceHandle,
+          targetHandle: e.targetHandle,
+        })),
+      };
+
+      const result = await workflowService.buildWorkflow(
+        payload.nodes,
+        payload.edges
+      );
+
+      toast.success(result.message || "Build Sucessful");
+    } catch (err) {
+      console.error("Build failed:", err);
+      toast.error(err?.response?.data?.detail || "Failed to build workflow");
+    }
+  };
 
   /* ---------------- NODE DATA UPDATE ---------------- */
   const onNodeDataChange = useCallback(
@@ -214,10 +250,26 @@ export default function WorkflowBuilder() {
           >
             <Background className="bg-gray-100" />
             <Controls />
-            <MiniMap />
           </ReactFlow>
+          <button 
+          onClick={handleBuild}
+          className="flex p-3 absolute bottom-20 right-10 bg-green-600 cursor-pointer rounded-full">
+            <Play className="text-white"/>
+          </button>
+          <button onClick={() => setIsChatOpen(true)}
+          className="flex p-3 absolute bottom-6 right-10 bg-blue-600 cursor-pointer rounded-full">
+            <MessageCircleMore className="text-white"/>
+          </button>
         </main>
       </div>
+
+      {/* Chat Popup Modal */}
+      {isChatOpen && (
+        <ChatPopup 
+          workflowId={id} 
+          onClose={() => setIsChatOpen(false)} 
+        />
+      )}
     </div>
   );
 }
