@@ -119,7 +119,14 @@ async def save_workflow_graph(db: AsyncSession, workflow_id: int, payload):
                 "id": node.id,
                 "type": node.type,
                 "position": node.position,
-                "handles": node.handles,  # NEW: Include handles
+                "handles": [
+                    {
+                        "id": h.id,
+                        "type": h.type,
+                        "position": h.position,
+                    }
+                    for h in (node.handles or [])
+                ],
             }
             for node in payload.graph.nodes
         ]
@@ -157,7 +164,14 @@ async def save_workflow_graph(db: AsyncSession, workflow_id: int, payload):
                 node_id=node.id,
                 component_type=node.type,
                 config_values=config,
-                handles=node.handles,  # NEW: Store handles
+                handles=[
+                    {
+                        "id": h.id,
+                        "type": h.type,
+                        "position": h.position,
+                    }
+                    for h in (node.handles or [])
+                ],
             )
             db.add(node_config)
 

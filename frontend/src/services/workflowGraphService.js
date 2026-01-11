@@ -11,4 +11,14 @@ export const workflowGraphService = {
       throw error;
     }
   },
+
+  async saveWorkflowGraph(workflowId, graphData) {
+    try {
+      const response = await apiClient.patch(`/api/v1/workflow-graph/${workflowId}`, graphData);
+      return response.data;
+    } catch (error) {
+      console.error('Error saving workflow graph:', error);
+      throw error;
+    }
+  },
 }

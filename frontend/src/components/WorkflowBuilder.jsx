@@ -1,9 +1,4 @@
-import React, {
-  useState,
-  useCallback,
-  useRef,
-  useEffect,
-} from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import ReactFlow, {
   Background,
@@ -62,44 +57,74 @@ export default function WorkflowBuilder() {
     [setNodes]
   );
 
+  /* ---------------- SAVE WORKFLOW GRAPH ---------------- */
+  const handleSave = async () => {
+    try {
+      const payload = {
+        graph: {
+          nodes: nodes.map((n) => ({
+            id: n.id,
+            type: n.type,
+            position: n.position,
+            handles: n.data.handles,
+            data: {
+              config: n.data.values || {},
+            },
+          })),
+          edges: edges.map((e) => ({
+            source: e.source,
+            target: e.target,
+            sourceHandle: e.sourceHandle,
+            targetHandle: e.targetHandle,
+          })),
+        },
+      };
+
+      await workflowGraphService.saveWorkflowGraph(id, payload);
+
+      toast.success("Workflow saved successfully 🚀");
+    } catch (err) {
+      toast.error("Failed to save workflow");
+      console.error(err);
+    }
+  };
+
   /* ---------------- LOAD WORKFLOW ---------------- */
   useEffect(() => {
-  if (id && id !== "new") {
-    (async () => {
-      try {
-        const workflow = await workflowGraphService.getWorkflowGraph(id);
+    if (id && id !== "new") {
+      (async () => {
+        try {
+          const workflow = await workflowGraphService.getWorkflowGraph(id);
 
-        console.log("Workflow Data Fetched:", workflow);
+          console.log("Workflow Data Fetched:", workflow);
 
-        const loadedNodes = workflow.graph.nodes.map((n) => ({
-          id: n.id,
-          type: n.type,
-          position: n.position,
-          data: {
-            label: n.component.name,
-            description: n.component.description,
-            type: n.component.type,
-            ui_schema: n.component.ui_schema,
-            handles: n.handles,  // NEW: Pass handles from API
-            values: n.config,
-            onChange: onNodeDataChange,
-          },
-        }));
+          const loadedNodes = workflow.graph.nodes.map((n) => ({
+            id: n.id,
+            type: n.type,
+            position: n.position,
+            data: {
+              label: n.component.name,
+              description: n.component.description,
+              type: n.component.type,
+              ui_schema: n.component.ui_schema,
+              handles: n.handles, // NEW: Pass handles from API
+              values: n.config,
+              onChange: onNodeDataChange,
+            },
+          }));
 
-        setNodes(loadedNodes);
+          setNodes(loadedNodes);
 
-        // ⬇️ STRICT API CONSUMPTION (NO NORMALIZATION)
-        setEdges(workflow.graph.edges);
-
-      } catch (err) {
-        toast.error("Failed to load workflow");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }
-}, [id, onNodeDataChange, setNodes, setEdges]);
-
+          // ⬇️ STRICT API CONSUMPTION (NO NORMALIZATION)
+          setEdges(workflow.graph.edges);
+        } catch (err) {
+          toast.error("Failed to load workflow");
+        } finally {
+          setLoading(false);
+        }
+      })();
+    }
+  }, [id, onNodeDataChange, setNodes, setEdges]);
 
   /* ---------------- SAFE EDGE CONNECT ---------------- */
   const onConnect = useCallback(
@@ -149,7 +174,7 @@ export default function WorkflowBuilder() {
           description: component.description,
           type: component.type,
           ui_schema: component.ui_schema,
-          handles: component.handles || [],  // Use from API, not hardcoded
+          handles: component.handles || [], // Use from API, not hardcoded
           values: {},
           onChange: onNodeDataChange,
         },
@@ -170,7 +195,7 @@ export default function WorkflowBuilder() {
 
   return (
     <div className="h-screen flex flex-col">
-      <Header nodes={nodes} edges={edges} />
+      <Header onSave={handleSave} />
 
       <div className="flex flex-1">
         <Sidebar />
