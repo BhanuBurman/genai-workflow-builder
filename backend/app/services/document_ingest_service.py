@@ -1,5 +1,5 @@
 import os
-from app.llm_models.embeddings import get_huggingface_embedding_function
+from app.llm_models.embeddings import get_huggingface_embedding_function, get_openai_embedding_function
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
@@ -19,7 +19,10 @@ MAIN_COLLECTION_NAME = "app_knowledge_base"
 # )
 
 
-embedding_function = get_huggingface_embedding_function()
+embedding_function = get_openai_embedding_function()
+
+# FREE Model used for development
+embedding_function_free = get_huggingface_embedding_function()
 
 async def ingest_pdf_to_vector_db(file_path: str, filename: str):
     """

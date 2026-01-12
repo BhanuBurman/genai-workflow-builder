@@ -1,18 +1,23 @@
 from app.workflow.state import GraphState
-from app.llm_models.embeddings import get_huggingface_embedding_function
+from app.llm_models.embeddings import get_huggingface_embedding_function, get_openai_embedding_function
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from config import settings
 from langchain_chroma import Chroma
-from langchain_openai import OpenAIEmbeddings
+
+# llm used while development
+# llm = ChatOpenAI(
+#     model=settings.LLM_MODEL_NAME,
+#     tiktoken_model_name=settings.TIKTOKEN_MODEL_NAME,
+#     api_key=settings.OPENAI_API_KEY,
+#     base_url=settings.OPENAI_BASE_URL,
+#     temperature=settings.TEMPERATURE,
+# )
 
 llm = ChatOpenAI(
-    model=settings.LLM_MODEL_NAME,
-    tiktoken_model_name=settings.TIKTOKEN_MODEL_NAME,
-    api_key=settings.OPENAI_API_KEY,
-    base_url=settings.OPENAI_BASE_URL,
-    temperature=settings.TEMPERATURE,
-)
+    model="gpt-3.5-turbo",
+    temperature=0.7,
+    api_key=settings.OPENAI_API_KEY)
 
 NO_RESULTS_FLAG = "__NO_SEARCH_RESULTS__"
 
@@ -36,14 +41,9 @@ def node_knowledge_base(state: GraphState) -> GraphState:
     filter_filename = state.get("filter_filename", None)
     
     # 1. Initialize Embeddings (Must match ingestion model)
-    # embedding_function = OpenAIEmbeddings(
-    #     model=settings.EMBEDDING_MODEL_NAME,
-    #     base_url=settings.OPENAI_BASE_URL,
-    #     api_key=settings.OPENAI_API_KEY,
-    #     tiktoken_model_name=settings.EMBEDDING_TIKTOKEN_MODEL_NAME,
-    # )
+    embedding_function = get_openai_embedding_function()
     ## USING FREE MODEL FOR TESTING
-    embedding_function = get_huggingface_embedding_function()
+    embedding_function_free = get_huggingface_embedding_function()
     
     # 2. Connect to existing ChromaDB
     vector_store = Chroma(

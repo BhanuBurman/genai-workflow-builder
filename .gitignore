@@ -25,6 +25,7 @@ coverage.xml
 
 
 user_files/
+chroma_db/
 
 # FastAPI
 *.db
