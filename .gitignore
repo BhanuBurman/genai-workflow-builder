@@ -23,6 +23,9 @@ coverage.xml
 
 .env
 
+
+user_files/
+
 # FastAPI
 *.db
 *.sqlite

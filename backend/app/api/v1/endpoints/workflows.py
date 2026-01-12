@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Any, Dict, List
+from sqlalchemy import select
+from typing import Any, Dict, List, Optional
+from datetime import datetime
 
 from app.db.session import get_db
 from app.schemas.workflow import WorkflowResponse, WorkflowCreate
@@ -16,6 +18,8 @@ from app.services.workflow_service import (
     run_workflow as run_workflow_service,
 )
 from app.services.workflow_graph_service import save_workflow_graph
+from app.services.document_ingest_service import ingest_pdf_to_vector_db
+from app.models.file import File
 
 from app.workflow.builder import build_graph_from_frontend
 from app.workflow.validator import GraphValidationError
@@ -33,6 +37,7 @@ class RunGraphRequest(BaseModel):
 class WorkflowBuildRequest(BaseModel):
     nodes: List[Dict[str, Any]]
     edges: List[Dict[str, Any]]
+    workflow_id: int  # Required: for ingesting files
 
 
 class WorkflowBuildResponse(BaseModel):
@@ -42,24 +47,46 @@ class WorkflowBuildResponse(BaseModel):
 
 # --- The NEW Build Endpoint ---
 @router.post("/build", response_model=WorkflowBuildResponse)
-async def build_workflow(payload: WorkflowBuildRequest):
+async def build_workflow(
+    payload: WorkflowBuildRequest, db: AsyncSession = Depends(get_db)
+):
     """
-    Validates the graph structure.
-    Does NOT save to DB yet (pure validation).
+    Validates the graph structure AND ingests documents to vector DB.
     """
     try:
         # 1. Run Validation Logic
         validate_graph(payload.nodes, payload.edges)
 
-        # 2. Return Success
-        return {"status": "valid", "message": "Build Sucessful"}
+        # 2. NEW: Ingest documents from workflow files
+        # Fetch all files associated with this workflow
+        stmt = select(File).where(File.workflow_id == payload.workflow_id)
+        result = await db.execute(stmt)
+        files = result.scalars().all()
+
+        for file in files:
+            if not file.is_ingested:  # Only ingest if not already done
+                try:
+                    await ingest_pdf_to_vector_db(file.filepath, file.filename)
+                    # Update file record
+                    file.is_ingested = True
+                    file.ingested_at = datetime.utcnow()
+                    db.add(file)
+                except Exception as ingest_error:
+                    print(
+                        f"Warning: Failed to ingest {file.filename}: {str(ingest_error)}"
+                    )
+
+        await db.commit()
+
+        # 3. Return Success
+        return {"status": "valid", "message": "Build Successful"}
 
     except GraphValidationError as e:
-        # 3. Return Logic Error (400 Bad Request)
+        # 4. Return Logic Error (400 Bad Request)
         raise HTTPException(status_code=400, detail=str(e))
 
     except Exception as e:
-        # 4. Return Server Error
+        # 5. Return Server Error
         raise HTTPException(status_code=500, detail=f"Server Error: {str(e)}")
 
 

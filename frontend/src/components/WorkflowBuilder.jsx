@@ -38,9 +38,11 @@ export default function WorkflowBuilder() {
   const [loading, setLoading] = useState(id !== "new");
 
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isBuilding, setIsBuilding] = useState(false);
 
   /* ---------------- BUILD WORKFLOW (VALIDATE) ---------------- */
   const handleBuild = async () => {
+    setIsBuilding(true);
     try {
       if (nodes.length === 0 || edges.length === 0) {
         toast.error("Please add nodes and edges to build the workflow");
@@ -48,6 +50,7 @@ export default function WorkflowBuilder() {
       }
 
       const payload = {
+        workflow_id: id,
         nodes: nodes.map((n) => ({
           id: n.id,
           type: n.type,
@@ -61,15 +64,16 @@ export default function WorkflowBuilder() {
         })),
       };
 
-      const result = await workflowService.buildWorkflow(
-        payload.nodes,
-        payload.edges
-      );
+      const result = await workflowService.buildWorkflow(payload);
 
       toast.success(result.message || "Build Sucessful");
     } catch (err) {
       console.error("Build failed:", err);
+      console.error("❌ Error response data:", err?.response?.data);
+      console.error("❌ Error status:", err?.response?.status);
       toast.error(err?.response?.data?.detail || "Failed to build workflow");
+    } finally {
+      setIsBuilding(false);
     }
   };
 
@@ -145,6 +149,7 @@ export default function WorkflowBuilder() {
               ui_schema: n.component.ui_schema,
               handles: n.handles, // NEW: Pass handles from API
               values: n.config,
+              workflowId: id,
               onChange: onNodeDataChange,
             },
           }));
@@ -212,6 +217,7 @@ export default function WorkflowBuilder() {
           ui_schema: component.ui_schema,
           handles: component.handles || [], // Use from API, not hardcoded
           values: {},
+          workflowId: id,
           onChange: onNodeDataChange,
         },
       };
@@ -234,6 +240,14 @@ export default function WorkflowBuilder() {
       <Header onSave={handleSave} />
 
       <div className="flex flex-1">
+        {isBuilding && (
+          <div className="z-10 absolute top-0 left-0 w-full h-screen bg-black/55">
+            <div className="w-full h-full flex justify-center items-center flex-col gap-4">
+              <Loader2 className="w-20 h-20 animate-spin text-green-500" />
+              <p className="text-2xl text-blue-500">Building...</p>
+            </div>
+          </div>
+        )}
         <Sidebar />
 
         <main ref={reactFlowWrapper} className="flex-1">
@@ -253,6 +267,7 @@ export default function WorkflowBuilder() {
           </ReactFlow>
           <button 
           onClick={handleBuild}
+          disabled={isBuilding}
           className="flex p-3 absolute bottom-20 right-10 bg-green-600 cursor-pointer rounded-full">
             <Play className="text-white"/>
           </button>

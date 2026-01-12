@@ -4,7 +4,17 @@ COMPONENT_DEFINITIONS = [
         "name": "User Query",
         "description": "Starting point of the workflow. Accepts user input.",
         "ui_schema": {"fields": []},
-        "handles": [{"id": "query", "type": "source", "position": "bottom"}],
+        # Updated: Handles for all 4 directions (Source & Target)
+        "handles": [
+            {"id": "top-source", "type": "source", "position": "top"},
+            {"id": "top-target", "type": "target", "position": "top"},
+            {"id": "right-source", "type": "source", "position": "right"},
+            {"id": "right-target", "type": "target", "position": "right"},
+            {"id": "bottom-source", "type": "source", "position": "bottom"},
+            {"id": "bottom-target", "type": "target", "position": "bottom"},
+            {"id": "left-source", "type": "source", "position": "left"},
+            {"id": "left-target", "type": "target", "position": "left"}
+        ],
     },
     {
         "type": "llm",
@@ -36,10 +46,16 @@ COMPONENT_DEFINITIONS = [
                 },
             ]
         },
+        # Updated: Handles for all 4 directions (Source & Target)
         "handles": [
-            {"id": "query", "type": "target", "position": "top"},
-            {"id": "context", "type": "target", "position": "top"},
-            {"id": "output", "type": "source", "position": "bottom"},
+            {"id": "top-source", "type": "source", "position": "top"},
+            {"id": "top-target", "type": "target", "position": "top"},
+            {"id": "right-source", "type": "source", "position": "right"},
+            {"id": "right-target", "type": "target", "position": "right"},
+            {"id": "bottom-source", "type": "source", "position": "bottom"},
+            {"id": "bottom-target", "type": "target", "position": "bottom"},
+            {"id": "left-source", "type": "source", "position": "left"},
+            {"id": "left-target", "type": "target", "position": "left"}
         ],
     },
     {
@@ -48,6 +64,13 @@ COMPONENT_DEFINITIONS = [
         "description": "Retrieves relevant documents from vector store",
         "ui_schema": {
             "fields": [
+                # NEW FIELD: File Upload
+                {
+                    "name": "knowledge_doc",
+                    "label": "Upload Document",
+                    "type": "file", 
+                    "description": "Upload PDF or TXT to index",
+                },
                 {
                     "name": "top_k",
                     "label": "Top K Results",
@@ -62,13 +85,33 @@ COMPONENT_DEFINITIONS = [
                 },
             ]
         },
-        "handles": [{"id": "context", "type": "source", "position": "bottom"}],
+        # Updated: Handles for all 4 directions (Source & Target)
+        "handles": [
+            {"id": "top-source", "type": "source", "position": "top"},
+            {"id": "top-target", "type": "target", "position": "top"},
+            {"id": "right-source", "type": "source", "position": "right"},
+            {"id": "right-target", "type": "target", "position": "right"},
+            {"id": "bottom-source", "type": "source", "position": "bottom"},
+            {"id": "bottom-target", "type": "target", "position": "bottom"},
+            {"id": "left-source", "type": "source", "position": "left"},
+            {"id": "left-target", "type": "target", "position": "left"}
+        ],
     },
     {
         "type": "output",
         "name": "Output",
         "description": "Final output of the workflow",
         "ui_schema": {"fields": []},
-        "handles": [{"id": "output", "type": "target", "position": "top"}],
+        # Updated: Handles for all 4 directions (Source & Target)
+        "handles": [
+            {"id": "top-source", "type": "source", "position": "top"},
+            {"id": "top-target", "type": "target", "position": "top"},
+            {"id": "right-source", "type": "source", "position": "right"},
+            {"id": "right-target", "type": "target", "position": "right"},
+            {"id": "bottom-source", "type": "source", "position": "bottom"},
+            {"id": "bottom-target", "type": "target", "position": "bottom"},
+            {"id": "left-source", "type": "source", "position": "left"},
+            {"id": "left-target", "type": "target", "position": "left"}
+        ],
     },
 ]

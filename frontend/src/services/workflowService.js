@@ -101,12 +101,9 @@ export const workflowService = {
   },
 
   // Build workflow (validate the graph structure)
-  async buildWorkflow(nodes, edges) {
+  async buildWorkflow(payload) {
     try {
-      const response = await apiClient.post('/api/v1/workflows/build', {
-        nodes,
-        edges
-      });
+      const response = await apiClient.post('/api/v1/workflows/build', payload);
       return response.data;
     } catch (error) {
       console.error('Error building workflow:', error);
